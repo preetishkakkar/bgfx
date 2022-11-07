@@ -630,6 +630,8 @@ VK_DESTROY_FUNC(DescriptorSet);
 		VkImageLayout setImageMemoryBarrier(VkCommandBuffer _commandBuffer, VkImageLayout _newImageLayout, bool _singleMsaaImage = false);
 
 		VkResult createView(uint32_t _layer, uint32_t _numLayers, uint32_t _mip, uint32_t _numMips, VkImageViewType _type, VkImageAspectFlags _aspectMask, bool _renderTarget, ::VkImageView* _view) const;
+		
+		void overrideInternal(uintptr_t _ptr);
 
 		void*    m_directAccessPtr;
 		uint64_t m_flags;
@@ -651,11 +653,11 @@ VK_DESTROY_FUNC(DescriptorSet);
 
 		VkImage        m_textureImage;
 		VkDeviceMemory m_textureDeviceMem;
-		VkImageLayout  m_currentImageLayout;
+		mutable VkImageLayout  m_currentImageLayout;
 
 		VkImage        m_singleMsaaImage;
 		VkDeviceMemory m_singleMsaaDeviceMem;
-		VkImageLayout  m_currentSingleMsaaImageLayout;
+		mutable VkImageLayout  m_currentSingleMsaaImageLayout;
 
 		VkImageLayout m_sampledLayout;
 

@@ -2332,13 +2332,14 @@ VK_IMPORT_DEVICE
 			bgfx::release(mem);
 		}
 
-		void overrideInternal(TextureHandle /*_handle*/, uintptr_t /*_ptr*/) override
+		void overrideInternal(TextureHandle _handle, uintptr_t _ptr) override
 		{
+			m_textures[_handle.idx].overrideInternal(_ptr);
 		}
 
-		uintptr_t getInternal(TextureHandle /*_handle*/) override
+		uintptr_t getInternal(TextureHandle _handle) override
 		{
-			return 0;
+			return uintptr_t(m_textures[_handle.idx].m_textureImage.vk);
 		}
 
 		void destroyTexture(TextureHandle _handle) override
@@ -6111,24 +6112,35 @@ VK_DESTROY
 		return m_directAccessPtr;
 	}
 
+	void TextureVK::overrideInternal(uintptr_t _ptr)
+	{
+		destroy();
+		m_flags |= BGFX_SAMPLER_INTERNAL_SHARED;
+		m_textureImage.vk = (::VkImage)_ptr;
+	}
+
+
 	void TextureVK::destroy()
 	{
 		m_readback.destroy();
 
-		if (VK_NULL_HANDLE != m_textureImage)
+		if (0 == (m_flags & BGFX_SAMPLER_INTERNAL_SHARED))
 		{
-			s_renderVK->release(m_textureImage);
-			s_renderVK->release(m_textureDeviceMem);
-		}
+			if (VK_NULL_HANDLE != m_textureImage)
+			{
+				s_renderVK->release(m_textureImage);
+				s_renderVK->release(m_textureDeviceMem);
+			}
 
-		if (VK_NULL_HANDLE != m_singleMsaaImage)
-		{
-			s_renderVK->release(m_singleMsaaImage);
-			s_renderVK->release(m_singleMsaaDeviceMem);
-		}
+			if (VK_NULL_HANDLE != m_singleMsaaImage)
+			{
+				s_renderVK->release(m_singleMsaaImage);
+				s_renderVK->release(m_singleMsaaDeviceMem);
+			}
 
-		m_currentImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		m_currentSingleMsaaImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			m_currentImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			m_currentSingleMsaaImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		}
 	}
 
 	void TextureVK::update(VkCommandBuffer _commandBuffer, uint8_t _side, uint8_t _mip, const Rect& _rect, uint16_t _z, uint16_t _depth, uint16_t _pitch, const Memory* _mem)
@@ -6390,6 +6402,9 @@ VK_DESTROY
 	VkResult TextureVK::createView(uint32_t _layer, uint32_t _numLayers, uint32_t _mip, uint32_t _numMips, VkImageViewType _type, VkImageAspectFlags _aspectMask, bool _renderTarget, ::VkImageView* _view) const
 	{
 		VkResult result = VK_SUCCESS;
+
+		m_currentImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		m_currentSingleMsaaImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 		if (VK_IMAGE_VIEW_TYPE_3D == m_type)
 		{
